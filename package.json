@@ -1,0 +1,61 @@
+{
+  "name": "rekam-studio",
+  "productName": "Rekam Studio",
+  "version": "1.0.0",
+  "description": "Perekam layar HD yang modern, ringan, dan lancar untuk Windows",
+  "author": {
+    "name": "imron.sf",
+    "url": "https://github.com/imronsf"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/imronsf/rekam-layar-window",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imronsf/rekam-layar-window.git"
+  },
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "icon": "node tools/make-icon.js",
+    "selftest": "electron tools/selftest.js",
+    "dist": "node tools/make-icon.js && electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "com.imronsf.rekamstudio",
+    "productName": "Rekam Studio",
+    "copyright": "Copyright © 2026 imron.sf",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Rekam Studio",
+      "artifactName": "RekamStudio-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "RekamStudio-Portable-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  }
+}

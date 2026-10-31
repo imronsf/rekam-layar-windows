@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data:; media-src 'self' blob: mediastream:; style-src 'self'; script-src 'self'">
+  <title>Rekam Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-status="idle">
+  <div class="app">
+    <header class="titlebar">
+      <div class="brand"><span class="brand-mark"></span><span>Rekam Studio</span></div>
+      <div class="win-controls">
+        <button class="wc wc-panel" id="btnPanel" title="Tampilkan panel" aria-label="Tampilkan panel">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M10 2.5v11"/></svg>
+        </button>
+        <button class="wc" id="wcMin" title="Minimalkan" aria-label="Minimalkan">
+          <svg viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"/></svg>
+        </button>
+        <button class="wc" id="wcMax" title="Maksimalkan" aria-label="Maksimalkan">
+          <svg class="ic-max" viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor"/></svg>
+          <svg class="ic-restore" viewBox="0 0 10 10"><path d="M2.5 2.5V.5h7v7h-2M.5 2.5h7v7h-7z" fill="none" stroke="currentColor"/></svg>
+        </button>
+        <button class="wc wc-close" id="wcClose" title="Tutup" aria-label="Tutup">
+          <svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+      <main class="main">
+        <section class="stage" id="stage">
+          <video id="preview" autoplay muted playsinline></video>
+          <div class="stage-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            <p>Pilih layar atau jendela di panel <b>Sumber</b></p>
+          </div>
+          <div class="stage-spinner"></div>
+          <div class="pill rec-badge"><span class="dot"></span><span id="recBadgeText">REC</span></div>
+          <div class="pill stage-meta" id="stageMeta"></div>
+          <div class="countdown" id="countdown"><span id="countdownNum">3</span><small>Klik tombol rekam untuk batal</small></div>
+        </section>
+
+        <section class="controlbar">
+          <div class="cb-left">
+            <div class="status"><span class="status-dot"></span><span id="statusText">Siap merekam</span></div>
+            <div class="timer" id="timer">00:00:00</div>
+            <div class="cb-sub" id="cbSub">—</div>
+          </div>
+
+          <div class="cb-center">
+            <button class="btn-round" id="btnPause" title="Jeda (Ctrl+Alt+P)" disabled>
+              <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+              <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+            </button>
+            <button class="btn-rec" id="btnRec" title="Mulai rekam (Ctrl+Alt+R)"><span class="rec-inner"></span></button>
+            <button class="btn-round" id="btnMic" title="Bisukan mikrofon">
+              <svg class="ic-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+              <svg class="ic-mic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M15 9.5V6a3 3 0 0 0-5.7-1.3M9 9v2a3 3 0 0 0 4.8 2.4M5.5 11a6.5 6.5 0 0 0 10.6 5M18.5 11c0 .8-.1 1.5-.4 2.2M12 17.5V21M3 3l18 18"/></svg>
+            </button>
+          </div>
+
+          <div class="cb-right">
+            <div class="meter-label"><span>Audio</span><b id="audioSrcLabel">Mati</b></div>
+            <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="sidebar">
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-tab="source">Sumber</button>
+          <button class="tab" data-tab="settings">Pengaturan</button>
+          <button class="tab" data-tab="library">Rekaman<span class="count" id="fileCount"></span></button>
+        </nav>
+
+        <!-- Sumber -->
+        <div class="panel active" data-panel="source">
+          <div class="panel-head">
+            <div class="seg" id="srcType">
+              <button data-value="screen" class="active">Layar</button>
+              <button data-value="window">Jendela</button>
+            </div>
+            <button class="icon-btn" id="btnRefresh" title="Muat ulang sumber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></svg>
+            </button>
+          </div>
+          <div class="src-grid" id="srcGrid"></div>
+        </div>
+
+        <!-- Pengaturan -->
+        <div class="panel" data-panel="settings">
+          <fieldset id="settingsFields">
+            <div class="group">
+              <div class="group-title">Video</div>
+              <div class="row">
+                <label for="selRes">Resolusi</label>
+                <select class="select" id="selRes" data-setting="resolution">
+                  <option value="720">HD · 1280×720</option>
+                  <option value="1080">Full HD · 1920×1080</option>
+                  <option value="1440">2K · 2560×1440</option>
+                  <option value="2160">4K · 3840×2160</option>
+                </select>
+              </div>
+              <div class="row">
+                <label>Frame rate</label>
+                <div class="seg" data-seg="fps" data-type="number">
+                  <button data-value="30">30 fps</button>
+                  <button data-value="60">60 fps</button>
+                </div>
+              </div>
+              <div class="row">
+                <label>Kualitas</label>
+                <div class="seg" data-seg="quality">
+                  <button data-value="standard">Standar</button>
+                  <button data-value="high">Tinggi</button>
+                  <button data-value="ultra">Ultra</button>
+                </div>
+              </div>
+              <div class="row">
+                <label>Format</label>
+                <div class="seg" data-seg="format">
+                  <button data-value="mp4">MP4</button>
+                  <button data-value="webm">WebM</button>
+                </div>
+              </div>
+              <p class="hint" id="bitrateHint"></p>
+            </div>
+
+            <div class="group">
+              <div class="group-title">Audio</div>
+              <label class="toggle-row">
+                <span><b>Audio sistem</b><small>Suara yang diputar di komputer</small></span>
+                <input type="checkbox" class="switch" data-setting="systemAudio">
+              </label>
+              <label class="toggle-row">
+                <span><b>Mikrofon</b><small>Rekam suara Anda</small></span>
+                <input type="checkbox" class="switch" data-setting="mic">
+              </label>
+              <div class="sub" id="micOptions">
+                <div class="row">
+                  <label for="micSelect">Perangkat</label>
+                  <select class="select" id="micSelect" data-setting="micId"></select>
+                </div>
+                <label class="toggle-row">
+                  <span><b>Peredam bising</b><small>Kurangi noise &amp; gema</small></span>
+                  <input type="checkbox" class="switch" data-setting="noiseSuppression">
+                </label>
+              </div>
+            </div>
+
+            <div class="group">
+              <div class="group-title">Umum</div>
+              <label class="toggle-row">
+                <span><b>Hitung mundur</b><small>Jeda 3 detik sebelum mulai</small></span>
+                <input type="checkbox" class="switch" data-setting="countdown">
+              </label>
+              <label class="toggle-row">
+                <span><b>Minimalkan saat merekam</b><small>Jendela disembunyikan ke taskbar</small></span>
+                <input type="checkbox" class="switch" data-setting="minimizeOnRecord">
+              </label>
+              <label class="toggle-row">
+                <span><b>Sembunyikan dari rekaman</b><small>Jendela aplikasi ini tidak ikut terekam</small></span>
+                <input type="checkbox" class="switch" data-setting="hideFromCapture">
+              </label>
+              <div class="field-label">Folder penyimpanan</div>
+              <div class="folder">
+                <div class="folder-path" id="folderPath"></div>
+                <button type="button" class="btn-ghost" id="btnChooseDir">Ubah</button>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="group">
+            <div class="group-title">Pintasan keyboard</div>
+            <div class="kbd-row"><span>Mulai / hentikan</span><span><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>R</kbd></span></div>
+            <div class="kbd-row"><span>Jeda / lanjutkan</span><span><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>P</kbd></span></div>
+            <p class="hint">Pintasan berfungsi global, juga saat aplikasi diminimalkan.</p>
+          </div>
+
+          <div class="about">
+            <span class="brand-mark"></span>
+            <div><b id="aboutName">Rekam Studio</b><small id="aboutMeta">Dikembangkan oleh imron.sf</small></div>
+          </div>
+        </div>
+
+        <!-- Rekaman -->
+        <div class="panel" data-panel="library">
+          <div class="panel-head">
+            <span>Rekaman terbaru</span>
+            <button class="btn-ghost" id="btnOpenDir">Buka folder</button>
+          </div>
+          <div class="files" id="files"></div>
+        </div>
+      </aside>
+      <div class="scrim" id="scrim"></div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <script src="app.js"></script>
+</body>
+</html>
