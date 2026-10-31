@@ -8,10 +8,10 @@
     "url": "https://github.com/imronsf"
   },
   "license": "MIT",
-  "homepage": "https://github.com/imronsf/rekam-layar-window",
+  "homepage": "https://github.com/imronsf/rekam-layar-windows",
   "repository": {
     "type": "git",
-    "url": "https://github.com/imronsf/rekam-layar-window.git"
+    "url": "https://github.com/imronsf/rekam-layar-windows.git"
   },
   "main": "main.js",
   "scripts": {

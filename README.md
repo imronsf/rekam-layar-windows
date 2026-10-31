@@ -7,7 +7,7 @@
 **Perekam layar HD untuk Windows, dengan tampilan modern dan minimalis.**
 Ringan, lancar, dan gratis.
 
-[![Download](https://img.shields.io/github/v/release/imronsf/rekam-layar-window?label=Download&style=for-the-badge&color=ff3d52)](https://github.com/imronsf/rekam-layar-window/releases/latest)
+[![Download](https://img.shields.io/github/v/release/imronsf/rekam-layar-windows?label=Download&style=for-the-badge&color=ff3d52)](https://github.com/imronsf/rekam-layar-windows/releases/latest)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows)
 ![License](https://img.shields.io/badge/License-MIT-3ccf91?style=for-the-badge)
 
@@ -37,7 +37,7 @@ Ringan, lancar, dan gratis.
 
 ### Cara 1: Installer (disarankan)
 
-1. Buka halaman **[Releases](https://github.com/imronsf/rekam-layar-window/releases/latest)**.
+1. Buka halaman **[Releases](https://github.com/imronsf/rekam-layar-windows/releases/latest)**.
 2. Unduh file **`RekamStudio-Setup-x.x.x.exe`**.
 3. Jalankan file tersebut, pilih folder instalasi, lalu klik **Install**.
 4. Buka **Rekam Studio** dari Desktop atau Start Menu.
@@ -48,7 +48,7 @@ Ringan, lancar, dan gratis.
 
 ### Cara 2: Portable (tanpa instalasi)
 
-1. Unduh **`RekamStudio-Portable-x.x.x.exe`** dari halaman [Releases](https://github.com/imronsf/rekam-layar-window/releases/latest).
+1. Unduh **`RekamStudio-Portable-x.x.x.exe`** dari halaman [Releases](https://github.com/imronsf/rekam-layar-windows/releases/latest).
 2. Simpan di folder mana saja (bisa juga di flashdisk), lalu klik dua kali untuk menjalankan.
 
 ### Menghapus aplikasi
@@ -94,8 +94,8 @@ Pintasan ini tetap berfungsi saat aplikasi diminimalkan.
 Dibuat dengan [Electron](https://www.electronjs.org/). Pastikan [Node.js](https://nodejs.org/) 20 atau lebih baru sudah terpasang.
 
 ```bash
-git clone https://github.com/imronsf/rekam-layar-window.git
-cd rekam-layar-window
+git clone https://github.com/imronsf/rekam-layar-windows.git
+cd rekam-layar-windows
 npm install
 npm start
 ```
