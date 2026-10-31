@@ -93,6 +93,31 @@
         <div class="panel" data-panel="settings">
           <fieldset id="settingsFields">
             <div class="group">
+              <div class="group-title">Hasil video</div>
+              <div class="row">
+                <label>Rasio</label>
+                <div class="seg" data-seg="aspect">
+                  <button data-value="original" title="Sesuai sumber (landscape)">Asli</button>
+                  <button data-value="16:9" title="Landscape 16:9">16:9</button>
+                  <button data-value="9:16" title="Portrait 9:16 — Reels, TikTok, Shorts">9:16</button>
+                  <button data-value="1:1" title="Persegi 1:1">1:1</button>
+                </div>
+              </div>
+              <div class="field-label">Latar belakang</div>
+              <div class="bg-grid" id="bgGrid"></div>
+              <button type="button" class="btn-ghost btn-block" id="btnBgImage">Ganti gambar latar…</button>
+
+              <div class="sub style-options" id="styleOptions">
+                <div class="range-head"><label for="rngScale">Ukuran video</label><output id="outScale"></output></div>
+                <input type="range" class="range" id="rngScale" min="50" max="100" step="1" data-setting="scale">
+                <div class="range-head"><label for="rngRadius">Sudut membulat</label><output id="outRadius"></output></div>
+                <input type="range" class="range" id="rngRadius" min="0" max="48" step="1" data-setting="radius">
+                <div class="range-head"><label for="rngShadow">Bayangan</label><output id="outShadow"></output></div>
+                <input type="range" class="range" id="rngShadow" min="0" max="100" step="1" data-setting="shadow">
+              </div>
+            </div>
+
+            <div class="group">
               <div class="group-title">Video</div>
               <div class="row">
                 <label for="selRes">Resolusi</label>
@@ -199,6 +224,7 @@
   </div>
 
   <div class="toasts" id="toasts"></div>
+  <script src="compositor.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

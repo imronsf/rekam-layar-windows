@@ -8,6 +8,8 @@ const RES = { 720: [1280, 720], 1080: [1920, 1080], 1440: [2560, 1440], 2160: [3
 const BPP = { standard: 0.06, high: 0.1, ultra: 0.16 }; // bit per piksel per frame
 const RESTART_PREVIEW = new Set(['resolution', 'fps', 'systemAudio']);
 const REBUILD_AUDIO = new Set(['mic', 'micId', 'noiseSuppression']);
+const STYLE_KEYS = new Set(['aspect', 'background', 'scale', 'radius', 'shadow']);
+const RANGE_FMT = { scale: (v) => `${v}%`, radius: (v) => `${v}px`, shadow: (v) => `${v}%` };
 const STATUS_TEXT = {
   idle: 'Siap merekam',
   countdown: 'Bersiap…',
@@ -22,6 +24,8 @@ const ICON = {
   folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2.2h7.4A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 11v5M14 11v5"/></svg>',
   window: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18"/></svg>',
+  none: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 17.5l11-11"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
 const el = {
@@ -47,6 +51,9 @@ const el = {
   micOptions: $('#micOptions'),
   bitrateHint: $('#bitrateHint'),
   folderPath: $('#folderPath'),
+  bgGrid: $('#bgGrid'),
+  btnBgImage: $('#btnBgImage'),
+  styleOptions: $('#styleOptions'),
   files: $('#files'),
   fileCount: $('#fileCount'),
   toasts: $('#toasts'),
@@ -59,6 +66,10 @@ const state = {
   selectedId: null,
   preview: null,
   previewToken: 0,
+  videoTrack: null, // track yang direkam: hasil compositor atau sumber asli
+  compositor: null,
+  bgImage: null, // ImageBitmap latar kustom
+  bgThumb: '',
   micStream: null,
   micMuted: false,
   audio: null, // { ctx, dest, analyser, micGain, hasSystem, hasMic }
@@ -242,6 +253,9 @@ async function startPreview() {
   const [w, h] = RES[s.resolution] || RES[1080];
   const video = { width: { max: w }, height: { max: h }, frameRate: { ideal: s.fps, max: s.fps } };
 
+  state.compositor?.stop();
+  state.compositor = null;
+  state.videoTrack = null;
   stopStream(state.preview);
   state.preview = null;
   el.stage.classList.remove('has-video');
@@ -274,11 +288,117 @@ async function startPreview() {
   vt.contentHint = 'motion';
   vt.addEventListener('ended', () => onSourceEnded(stream));
   state.preview = stream;
-  el.video.srcObject = new MediaStream([vt]);
+  attachPipeline();
   el.stage.classList.add('has-video');
 
   await rebuildAudio();
   updateMeta();
+}
+
+/* ---------------- Gaya hasil video (latar, rasio, bayangan) ---------------- */
+
+const needsCompositing = () => state.settings.background !== 'none' || state.settings.aspect !== 'original';
+
+function compositorOptions() {
+  const s = state.settings;
+  const [w, h] = RES[s.resolution] || RES[1080];
+  return {
+    size: { '16:9': [w, h], '9:16': [h, w], '1:1': [h, h] }[s.aspect] || null,
+    background: s.background,
+    image: state.bgImage,
+    scale: s.scale,
+    radius: s.radius,
+    shadow: s.shadow,
+  };
+}
+
+// Pasang track yang akan dipratinjau & direkam: lewat compositor bila perlu, atau sumber asli.
+function attachPipeline() {
+  state.compositor?.stop();
+  state.compositor = null;
+  const raw = state.preview?.getVideoTracks()[0];
+  state.videoTrack = raw || null;
+  if (!raw) return;
+
+  if (needsCompositing()) {
+    if (Compositor.supported) {
+      try {
+        state.compositor = new Compositor(raw, compositorOptions());
+        state.videoTrack = state.compositor.track;
+      } catch (err) {
+        console.error(err);
+        toast('Latar tidak dapat diterapkan', { type: 'warn', text: 'Merekam tanpa latar.' });
+      }
+    } else {
+      toast('Latar tidak didukung', { type: 'warn', text: 'Merekam tanpa latar.' });
+    }
+  }
+  el.video.srcObject = new MediaStream([state.videoTrack]);
+}
+
+function applyStyle() {
+  if (!state.preview) return;
+  if (needsCompositing() !== !!state.compositor) attachPipeline();
+  else state.compositor?.update(compositorOptions());
+  updateMeta();
+}
+
+// Ukuran video akhir [lebar, tinggi].
+function outputSize() {
+  const st = state.preview?.getVideoTracks()[0]?.getSettings() || {};
+  const src = [st.width || 1920, st.height || 1080];
+  return state.compositor ? state.compositor.size(src) : src;
+}
+
+async function loadBackgroundImage(dataUrl) {
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  const k = Math.min(1, 3840 / Math.max(img.naturalWidth, img.naturalHeight));
+  state.bgImage = await createImageBitmap(img, {
+    resizeWidth: Math.round(img.naturalWidth * k),
+    resizeHeight: Math.round(img.naturalHeight * k),
+    resizeQuality: 'high',
+  });
+  const c = document.createElement('canvas');
+  c.width = c.height = 96;
+  const t = Math.max(96 / img.naturalWidth, 96 / img.naturalHeight);
+  c.getContext('2d').drawImage(img, (96 - img.naturalWidth * t) / 2, (96 - img.naturalHeight * t) / 2, img.naturalWidth * t, img.naturalHeight * t);
+  state.bgThumb = c.toDataURL('image/jpeg', 0.85);
+}
+
+async function chooseBackgroundImage() {
+  if (state.status !== 'idle') return;
+  const res = await api.chooseBackground();
+  if (!res) return;
+  if (res.error) { toast('Gambar tidak dapat dipakai', { type: 'error', text: res.error }); return; }
+  try {
+    await loadBackgroundImage(res.dataUrl);
+  } catch {
+    toast('Gambar tidak dapat dibaca', { type: 'error', text: 'Coba format PNG atau JPG.' });
+    return;
+  }
+  state.settings.bgImage = res.path;
+  state.settings.background = 'custom';
+  api.setSettings({ background: 'custom' });
+  renderSettings();
+  applyStyle();
+}
+
+function renderBackgrounds() {
+  el.bgGrid.replaceChildren();
+  for (const bg of BACKGROUNDS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `bg-swatch ${bg.id === 'none' || bg.id === 'custom' ? bg.id : ''}`;
+    b.dataset.bg = bg.id;
+    b.title = bg.name;
+    b.setAttribute('aria-label', bg.name);
+    if (bg.stops) b.style.backgroundImage = backgroundCss(bg);
+    if (bg.id === 'none') b.innerHTML = ICON.none;
+    if (bg.id === 'custom') b.innerHTML = ICON.plus;
+    el.bgGrid.append(b);
+  }
 }
 
 function onSourceEnded(stream) {
@@ -287,6 +407,9 @@ function onSourceEnded(stream) {
     toast('Sumber ditutup', { type: 'warn', text: 'Rekaman dihentikan dan disimpan otomatis.' });
     stopRecording();
   }
+  state.compositor?.stop();
+  state.compositor = null;
+  state.videoTrack = null;
   state.preview = null;
   state.selectedId = null;
   el.video.srcObject = null;
@@ -373,7 +496,8 @@ function updateMeta() {
   const vt = state.preview?.getVideoTracks()[0];
   if (vt) {
     const st = vt.getSettings();
-    el.stageMeta.textContent = `${st.width}×${st.height} · ${Math.round(st.frameRate || state.settings.fps)} fps`;
+    const [w, h] = outputSize();
+    el.stageMeta.textContent = `${w}×${h} · ${Math.round(st.frameRate || state.settings.fps)} fps`;
   } else {
     el.stageMeta.textContent = '';
   }
@@ -386,9 +510,7 @@ function updateSub() {
     el.cbSub.textContent = `${fmtBytes(state.bytes)} · ${state.ext.toUpperCase()}`;
     return;
   }
-  const vt = state.preview?.getVideoTracks()[0];
-  const st = vt ? vt.getSettings() : null;
-  const res = st ? `${st.height}p` : `${s.resolution}p`;
+  const res = state.preview ? outputSize().join('×') : `${s.resolution}p`;
   el.cbSub.textContent = `${s.format.toUpperCase()} · ${res} · ${s.fps} fps · ${({ standard: 'Standar', high: 'Tinggi', ultra: 'Ultra' })[s.quality]}`;
 }
 
@@ -433,12 +555,13 @@ async function startRecording() {
   if (!state.preview) { state.status = 'idle'; updateUI(); return; }
 
   const s = state.settings;
-  const vt = state.preview.getVideoTracks()[0];
+  const vt = state.videoTrack || state.preview.getVideoTracks()[0];
   const tracks = [vt, ...(state.audio ? state.audio.dest.stream.getAudioTracks() : [])];
   const stream = new MediaStream(tracks);
   const { mime, ext } = pickMime(s.format, tracks.length > 1);
-  const st = vt.getSettings();
-  const vbps = bitrate(st.width || 1920, st.height || 1080, Math.round(st.frameRate || s.fps), s.quality);
+  const st = state.preview.getVideoTracks()[0].getSettings();
+  const [ow, oh] = outputSize();
+  const vbps = bitrate(ow, oh, Math.round(st.frameRate || s.fps), s.quality);
 
   let recorder;
   try {
@@ -627,7 +750,24 @@ function renderSettings() {
   el.folderPath.textContent = s.saveDir;
   el.folderPath.title = s.saveDir;
 
-  const [w, h] = RES[s.resolution] || RES[1080];
+  $$('.bg-swatch', el.bgGrid).forEach((b) => {
+    b.classList.toggle('selected', b.dataset.bg === s.background);
+    if (b.dataset.bg === 'custom') {
+      b.classList.toggle('has-image', !!state.bgThumb);
+      b.style.backgroundImage = state.bgThumb ? `url("${state.bgThumb}")` : '';
+    }
+  });
+  el.btnBgImage.classList.toggle('show', s.background === 'custom' && !!state.bgThumb);
+  el.styleOptions.classList.toggle('off', s.background === 'none');
+  $$('input[type=range][data-setting]').forEach((r) => {
+    const key = r.dataset.setting;
+    r.value = s[key];
+    r.style.setProperty('--p', `${((s[key] - r.min) / (r.max - r.min)) * 100}%`);
+    $(`#out${key[0].toUpperCase()}${key.slice(1)}`).textContent = RANGE_FMT[key](s[key]);
+  });
+
+  const [rw, rh] = RES[s.resolution] || RES[1080];
+  const [w, h] = { '9:16': [rh, rw], '1:1': [rh, rh] }[s.aspect] || [rw, rh];
   const vbps = bitrate(w, h, s.fps, s.quality);
   const mbPerMin = (vbps + 192000) * 60 / 8 / 1e6;
   el.bitrateHint.textContent = `Perkiraan ±${(vbps / 1e6).toFixed(1)} Mbps · ±${Math.round(mbPerMin)} MB per menit. ${s.format === 'mp4' ? 'H.264 dengan akselerasi hardware.' : 'VP9, kompatibel untuk web.'}`;
@@ -641,6 +781,7 @@ async function setSetting(key, value) {
   api.setSettings({ [key]: value });
   if (RESTART_PREVIEW.has(key)) await startPreview();
   else if (REBUILD_AUDIO.has(key)) await rebuildAudio();
+  else if (STYLE_KEYS.has(key)) applyStyle();
 }
 
 /* ---------------- UI ---------------- */
@@ -737,7 +878,27 @@ function bindUI() {
   });
   el.btnRefresh.addEventListener('click', () => { if (state.status === 'idle') refreshSources(); });
 
-  $$('[data-setting]').forEach((input) => input.addEventListener('change', () => {
+  // Slider: pratinjau langsung saat digeser, disimpan saat dilepas.
+  $$('input[type=range][data-setting]').forEach((r) => {
+    const key = r.dataset.setting;
+    r.addEventListener('input', () => {
+      if (state.status !== 'idle') return;
+      state.settings[key] = Number(r.value);
+      renderSettings();
+      applyStyle();
+    });
+    r.addEventListener('change', () => api.setSettings({ [key]: Number(r.value) }));
+  });
+
+  el.bgGrid.addEventListener('click', (e) => {
+    const id = e.target.closest('.bg-swatch')?.dataset.bg;
+    if (!id) return;
+    if (id === 'custom' && !state.bgImage) chooseBackgroundImage();
+    else setSetting('background', id);
+  });
+  el.btnBgImage.addEventListener('click', chooseBackgroundImage);
+
+  $$('[data-setting]:not([type=range])').forEach((input) => input.addEventListener('change', () => {
     setSetting(input.dataset.setting, input.type === 'checkbox' ? input.checked : input.value);
     if (input === el.micSelect) el.micSelect.title = el.micSelect.selectedOptions[0]?.text || '';
   }));
@@ -780,6 +941,12 @@ async function init() {
   state.settings = settings;
   $('#aboutName').textContent = `${info.name} v${info.version}`;
   $('#aboutMeta').textContent = `Dikembangkan oleh ${info.author}`;
+  if (settings.bgImage) {
+    const dataUrl = await api.loadBackground();
+    if (dataUrl) await loadBackgroundImage(dataUrl).catch(() => {});
+  }
+  if (settings.background === 'custom' && !state.bgImage) settings.background = 'sky';
+  renderBackgrounds();
   bindUI();
   renderSettings();
   updateUI();

@@ -1,7 +1,7 @@
 {
   "name": "rekam-studio",
   "productName": "Rekam Studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Perekam layar HD yang modern, ringan, dan lancar untuk Windows",
   "author": {
     "name": "imron.sf",
@@ -23,7 +23,7 @@
   "build": {
     "appId": "com.imronsf.rekamstudio",
     "productName": "Rekam Studio",
-    "copyright": "Copyright © 2026 imron.sf",
+    "copyright": "Copyright Â© 2026 imron.sf",
     "directories": {
       "output": "dist"
     },

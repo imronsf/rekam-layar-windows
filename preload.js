@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('api', {
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   chooseDir: () => ipcRenderer.invoke('dir:choose'),
   openDir: () => ipcRenderer.invoke('dir:open'),
+  chooseBackground: () => ipcRenderer.invoke('bg:choose'),
+  loadBackground: () => ipcRenderer.invoke('bg:load'),
 
   listSources: () => ipcRenderer.invoke('sources:list'),
   selectSource: (id) => ipcRenderer.invoke('source:select', id),

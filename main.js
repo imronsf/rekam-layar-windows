@@ -18,6 +18,8 @@ if (!gotLock) app.quit();
 
 const APP_NAME = 'Rekam Studio';
 const VIDEO_EXT = new Set(['.mp4', '.webm', '.mkv']);
+const IMAGE_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.bmp': 'image/bmp' };
+const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
 
 let win = null;
 let selectedSourceId = null;
@@ -43,6 +45,12 @@ const defaultSettings = () => ({
   countdown: true,
   minimizeOnRecord: false,
   hideFromCapture: true,
+  aspect: 'original',
+  background: 'sky',
+  bgImage: '',
+  scale: 88,
+  radius: 18,
+  shadow: 60,
   saveDir: path.join(app.getPath('videos'), APP_NAME),
 });
 
@@ -86,6 +94,14 @@ function isManagedFile(file) {
   if (typeof file !== 'string') return false;
   const rel = path.relative(path.resolve(settings.saveDir), path.resolve(file));
   return rel && !rel.startsWith('..') && !path.isAbsolute(rel) && VIDEO_EXT.has(path.extname(file).toLowerCase());
+}
+
+async function readImageDataUrl(file) {
+  const mime = IMAGE_MIME[path.extname(file).toLowerCase()];
+  if (!mime) return null;
+  const st = await fsp.stat(file);
+  if (!st.isFile() || st.size > MAX_IMAGE_BYTES) return null;
+  return `data:${mime};base64,${(await fsp.readFile(file)).toString('base64')}`;
 }
 
 function stopPowerBlocker() {
@@ -199,6 +215,23 @@ function registerIpc() {
     saveSettings();
     return settings.saveDir;
   });
+
+  ipcMain.handle('bg:choose', async () => {
+    const res = await dialog.showOpenDialog(win, {
+      title: 'Pilih gambar latar',
+      properties: ['openFile'],
+      filters: [{ name: 'Gambar', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] }],
+    });
+    const file = !res.canceled && res.filePaths[0];
+    if (!file) return null;
+    const dataUrl = await readImageDataUrl(file).catch(() => null);
+    if (!dataUrl) return { error: 'Gambar tidak valid atau lebih dari 30 MB.' };
+    settings.bgImage = file;
+    saveSettings();
+    return { path: file, dataUrl };
+  });
+
+  ipcMain.handle('bg:load', async () => (settings.bgImage ? readImageDataUrl(settings.bgImage).catch(() => null) : null));
 
   ipcMain.handle('dir:open', async () => {
     await fsp.mkdir(settings.saveDir, { recursive: true });

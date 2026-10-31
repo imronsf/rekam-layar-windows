@@ -21,6 +21,8 @@ Ringan, lancar, dan gratis.
 
 | | |
 |---|---|
+| 🎨 **Latar + bayangan** | Video tampil "mengambang" di atas latar gradien atau gambar sendiri, dengan sudut membulat dan bayangan yang bisa diatur |
+| 📱 **Rasio fleksibel** | Asli, 16:9 landscape, 9:16 portrait (Reels/TikTok/Shorts), atau 1:1 persegi |
 | 🖥️ **Layar atau jendela** | Rekam seluruh layar atau satu jendela saja, dengan pratinjau langsung |
 | 🎬 **Kualitas HD** | 720p, 1080p, 2K, hingga 4K, pada 30 atau 60 fps, dengan kualitas Standar, Tinggi, atau Ultra |
 | ⚡ **Akselerasi hardware** | MP4 (H.264 + AAC) di-encode oleh GPU, sehingga rekaman tetap mulus dan CPU tidak terbebani |
@@ -60,7 +62,11 @@ Buka **Settings → Apps → Installed apps**, cari **Rekam Studio**, lalu klik 
 ## 🎯 Cara Menggunakan
 
 1. **Pilih sumber** di tab **Sumber**: *Layar* untuk seluruh layar, atau *Jendela* untuk satu aplikasi.
-2. **Atur kualitas** di tab **Pengaturan**, yaitu resolusi, fps, format, dan audio.
+2. **Atur hasil video** di tab **Pengaturan**:
+   - **Rasio**: Asli, 16:9, 9:16 (portrait), atau 1:1
+   - **Latar belakang**: pilih gradien, klik ⊘ untuk tanpa latar, atau ＋ untuk gambar sendiri
+   - **Ukuran video**, **Sudut membulat**, dan **Bayangan** diatur lewat slider, dan hasilnya langsung terlihat di pratinjau
+   - Resolusi, fps, kualitas, format, dan audio juga diatur di tab ini
 3. Klik **tombol merah** untuk mulai merekam. Klik lagi untuk berhenti dan menyimpan.
 4. Hasil rekaman ada di tab **Rekaman** dan tersimpan otomatis di folder `Videos\Rekam Studio`.
 
@@ -72,6 +78,11 @@ Buka **Settings → Apps → Installed apps**, cari **Rekam Studio**, lalu klik 
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>P</kbd> | Jeda / lanjutkan |
 
 Pintasan ini tetap berfungsi saat aplikasi diminimalkan.
+
+<div align="center">
+<img src="docs/screenshot-portrait.png" alt="Mode portrait 9:16 dengan latar Senja" width="720">
+<br><sub>Mode portrait 9:16 dengan latar <i>Senja</i>, siap untuk Reels, TikTok, atau Shorts</sub>
+</div>
 
 ### Tips
 
@@ -103,7 +114,7 @@ npm start
 | Perintah | Fungsi |
 |---|---|
 | `npm start` | Menjalankan aplikasi dalam mode pengembangan |
-| `npm run selftest` | Uji otomatis: merekam ±5 detik lalu memastikan file bisa diputar |
+| `npm run selftest` | Uji otomatis semua mode (tanpa latar, 16:9, 9:16, 1:1 saat diminimalkan), lalu memastikan tiap file bisa diputar dengan ukuran yang benar |
 | `npm run dist` | Membuat installer dan versi portable di folder `dist/` |
 
 ### Struktur proyek
@@ -112,6 +123,7 @@ npm start
 main.js            Proses utama: jendela, capture, penulisan file, pintasan
 preload.js         Jembatan API yang aman antara renderer dan proses utama
 renderer/          Antarmuka (HTML, CSS, JavaScript)
+  compositor.js    Penyusun latar, bayangan, dan rasio video (frame demi frame)
 tools/             Pembuat ikon dan uji otomatis
 build/icon.png     Ikon aplikasi
 ```
